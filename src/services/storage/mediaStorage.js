@@ -28,4 +28,18 @@ export const mediaStorage = {
       request.onerror = () => reject(request.error)
     })
   },
+  async removeImage(id) {
+    if (!id) return
+    const database = await openDatabase()
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(IMAGE_STORE, 'readwrite')
+      transaction.objectStore(IMAGE_STORE).delete(id)
+      transaction.oncomplete = resolve
+      transaction.onerror = () => reject(transaction.error)
+    })
+  },
+  async removeDocumentImages(pageDocument) {
+    const imageIds = pageDocument.boxes.filter((box) => box.type === 'image').map((box) => box.metadata?.imageId).filter(Boolean)
+    await Promise.all(imageIds.map((id) => this.removeImage(id)))
+  },
 }

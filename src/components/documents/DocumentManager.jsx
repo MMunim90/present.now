@@ -1,10 +1,15 @@
 import { FilePlus2, FolderOpen, Pencil, Trash2, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function DocumentManager({ documents, activeDocumentId, onClose, onNew, onOpen, onRename, onDelete }) {
   const [editingId, setEditingId] = useState(null)
   const [draftName, setDraftName] = useState('')
   const [deleteId, setDeleteId] = useState(null)
   const beginRename = (item) => { setEditingId(item.id); setDraftName(item.title) }
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === 'Escape') { if (deleteId) setDeleteId(null); else if (editingId) setEditingId(null); else onClose() } }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [deleteId, editingId, onClose])
   return <div className="document-manager-backdrop" role="presentation" onPointerDown={onClose}><section className="document-manager" role="dialog" aria-modal="true" aria-label="Recent documents" onPointerDown={(event) => event.stopPropagation()}><header><div><span>Local workspace</span><h2>Recent Documents</h2></div><button type="button" onClick={onClose} aria-label="Close documents" title="Close"><X size={18} /></button></header><button className="new-document-card" type="button" onClick={onNew}><FilePlus2 size={18} /><span><strong>New document</strong><small>Start with an empty page</small></span></button><div className="document-list">{documents.length ? documents.map((item) => <article className={`document-row ${item.id === activeDocumentId ? 'is-current' : ''}`} key={item.id}>{editingId === item.id ? <form onSubmit={(event) => { event.preventDefault(); onRename(item.id, draftName); setEditingId(null) }}><input autoFocus value={draftName} onChange={(event) => setDraftName(event.target.value)} aria-label="Document name" /><button type="submit">Save</button><button type="button" onClick={() => setEditingId(null)}>Cancel</button></form> : <><button className="document-open" type="button" onClick={() => onOpen(item.id)}><FolderOpen size={17} /><span><strong>{item.title}</strong><small>{item.boxCount} {item.boxCount === 1 ? 'box' : 'boxes'} · {new Date(item.updatedAt).toLocaleDateString()}</small></span>{item.id === activeDocumentId && <em>Current</em>}</button><div className="document-row-actions"><button type="button" onClick={() => beginRename(item)} title="Rename document" aria-label="Rename document"><Pencil size={14} /></button><button type="button" onClick={() => setDeleteId(item.id)} title="Delete document" aria-label="Delete document"><Trash2 size={14} /></button></div></>}</article>) : <p className="no-documents">No local documents yet.</p>}</div>{deleteId && <div className="document-delete-confirm"><strong>Delete this document?</strong><span>This cannot be undone.</span><div><button type="button" onClick={() => setDeleteId(null)}>Cancel</button><button type="button" onClick={() => { onDelete(deleteId); setDeleteId(null) }}>Delete</button></div></div>}</section></div>
 }

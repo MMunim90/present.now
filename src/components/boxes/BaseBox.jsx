@@ -38,6 +38,8 @@ export default function BaseBox({ box, selected, onSelect, onCopy, onDelete, onE
     style={{ left: box.x, top: box.y, width: box.width * box.zoom, height: box.height * box.zoom, zIndex: selected ? 1 : 0 }}
     onPointerDownCapture={onSelect}
     onPointerDown={(event) => event.stopPropagation()}
+    onFocus={onSelect}
+    tabIndex={0}
     aria-label={`${label} box`}
   >
     <header className="box-header"><button className="box-drag-handle" type="button" onPointerDown={begin('drag')} title="Drag to move box" aria-label="Drag to move box"><GripHorizontal size={15} /></button><span className="box-title"><Icon size={14} /><span>{label}</span></span>{selected && <BoxToolbar zoom={box.zoom * 100} onExpand={onExpand} onZoomIn={onZoomIn} onZoomOut={onZoomOut} onCopy={onCopy} onDelete={onDelete} />}</header>
