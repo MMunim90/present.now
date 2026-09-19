@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Slim, unobtrusive scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.45);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.7);
+}
+
+/* Code editor (react-simple-code-editor) tweaks */
+.code-editor-textarea,
+.code-editor-pre {
+  outline: none !important;
+}
+.code-editor-textarea {
+  caret-color: #ffffff;
+}
+
+/* ---------- VS Code Dark+ inspired Prism theme ---------- */
+code[class*='language-'],
+pre[class*='language-'] {
+  color: #d4d4d4;
+  background: none;
+  text-shadow: none;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #6a9955;
+}
+.token.punctuation {
+  color: #d4d4d4;
+}
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #b5cea8;
+}
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #ce9178;
+}
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #d4d4d4;
+}
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #569cd6;
+}
+.token.function,
+.token.class-name {
+  color: #dcdcaa;
+}
+.token.regex,
+.token.important,
+.token.variable {
+  color: #d16969;
+}

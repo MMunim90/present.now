@@ -1,49 +1,231 @@
-import { useEffect, useState } from 'react'
-import { Braces, FileText, GripHorizontal, Image, MonitorPlay, TerminalSquare } from 'lucide-react'
+import React, { useCallback, useRef } from 'react'
+import { useDocumentStore } from '../../store/DocumentContext'
 import BoxToolbar from './BoxToolbar'
+import { clamp, nextZoom } from '../../utils/formatting'
 
-const boxDetails = {
-  text: { label: 'Text', icon: FileText }, image: { label: 'Image', icon: Image },
-  video: { label: 'Video', icon: MonitorPlay }, code: { label: 'Code', icon: Braces },
-  output: { label: 'Output', icon: TerminalSquare },
-}
+const MIN_WIDTH = 180
+const MIN_HEIGHT = 120
 
-const minSize = { text: [220, 130], image: [240, 170], video: [250, 170], code: [280, 180], output: [240, 150] }
+export default function BaseBox({ box, pageWidth, pageRef, extraControls, secondaryToolbar, children, contentClassName = '' }) {
+  const {
+    selectedId,
+    setSelectedId,
+    expandedId,
+    setExpandedId,
+    updateBox,
+    deleteBox,
+    copyBox,
+    bringToFront,
+    beginTransientEdit,
+    endTransientEdit,
+  } = useDocumentStore()
 
-export default function BaseBox({ box, selected, onSelect, onCopy, onDelete, onExpand, onZoomIn, onZoomOut, onUpdateLayout, children }) {
-  const { label, icon: Icon } = boxDetails[box.type]
-  const [interaction, setInteraction] = useState(null)
-  useEffect(() => {
-    if (!interaction) return undefined
-    const move = (event) => {
-      const dx = event.clientX - interaction.startX
-      const dy = event.clientY - interaction.startY
-      if (interaction.kind === 'drag') onUpdateLayout({ x: Math.max(0, interaction.x + dx), y: Math.max(0, interaction.y + dy) })
-      else {
-        const [minWidth, minHeight] = minSize[box.type]
-        onUpdateLayout({ width: Math.max(minWidth, interaction.width + dx / interaction.zoom), height: Math.max(minHeight, interaction.height + dy / interaction.zoom) })
+  const selected = selectedId === box.id
+  const expanded = expandedId === box.id
+  const dragInfo = useRef(null)
+  const resizeInfo = useRef(null)
+
+  const select = useCallback(
+    (e) => {
+      e.stopPropagation()
+      setSelectedId(box.id)
+      bringToFront(box.id)
+    },
+    [box.id, setSelectedId, bringToFront]
+  )
+
+  // ---------- Drag ----------
+  const onDragPointerDown = useCallback(
+    (e) => {
+      if (expanded) return
+      e.preventDefault()
+      select(e)
+      beginTransientEdit()
+      dragInfo.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        origX: box.x,
+        origY: box.y,
       }
-    }
-    const end = () => setInteraction(null)
-    window.addEventListener('pointermove', move)
-    window.addEventListener('pointerup', end)
-    return () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', end) }
-  }, [interaction, box.type, onUpdateLayout])
-  const begin = (kind) => (event) => {
-    event.preventDefault(); event.stopPropagation(); onSelect(event)
-    setInteraction({ kind, startX: event.clientX, startY: event.clientY, x: box.x, y: box.y, width: box.width, height: box.height, zoom: box.zoom })
+      window.addEventListener('pointermove', onDragMove)
+      window.addEventListener('pointerup', onDragUp)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [box.x, box.y, expanded]
+  )
+
+  const onDragMove = useCallback(
+    (e) => {
+      const info = dragInfo.current
+      if (!info) return
+      const dx = e.clientX - info.startX
+      const dy = e.clientY - info.startY
+      const pageBounds = pageRef?.current?.getBoundingClientRect()
+      const maxX = pageBounds ? pageBounds.width - 60 : 4000
+      updateBox(
+        box.id,
+        {
+          x: clamp(info.origX + dx, 0, maxX),
+          y: Math.max(0, info.origY + dy),
+        },
+        { record: false }
+      )
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [box.id]
+  )
+
+  const onDragUp = useCallback(() => {
+    dragInfo.current = null
+    window.removeEventListener('pointermove', onDragMove)
+    window.removeEventListener('pointerup', onDragUp)
+    endTransientEdit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ---------- Resize ----------
+  const onResizePointerDown = useCallback(
+    (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      select(e)
+      beginTransientEdit()
+      resizeInfo.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        origW: box.width,
+        origH: box.height,
+      }
+      window.addEventListener('pointermove', onResizeMove)
+      window.addEventListener('pointerup', onResizeUp)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [box.width, box.height]
+  )
+
+  const onResizeMove = useCallback(
+    (e) => {
+      const info = resizeInfo.current
+      if (!info) return
+      const dx = e.clientX - info.startX
+      const dy = e.clientY - info.startY
+      updateBox(
+        box.id,
+        {
+          width: clamp(info.origW + dx, MIN_WIDTH, 2000),
+          height: clamp(info.origH + dy, MIN_HEIGHT, 2000),
+        },
+        { record: false }
+      )
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [box.id]
+  )
+
+  const onResizeUp = useCallback(() => {
+    resizeInfo.current = null
+    window.removeEventListener('pointermove', onResizeMove)
+    window.removeEventListener('pointerup', onResizeUp)
+    endTransientEdit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleZoomIn = () => updateBox(box.id, { zoom: nextZoom(box.zoom, 1) })
+  const handleZoomOut = () => updateBox(box.id, { zoom: nextZoom(box.zoom, -1) })
+  const handleExpandToggle = () => setExpandedId(expanded ? null : box.id)
+  const handleCopy = (e) => {
+    e.stopPropagation()
+    copyBox(box.id)
   }
-  return <article
-    className={`content-box ${selected ? 'is-selected' : ''} ${interaction ? 'is-interacting' : ''}`}
-    style={{ left: box.x, top: box.y, width: box.width * box.zoom, height: box.height * box.zoom, zIndex: selected ? 1 : 0 }}
-    onPointerDownCapture={onSelect}
-    onPointerDown={(event) => event.stopPropagation()}
-    onFocus={onSelect}
-    tabIndex={0}
-    aria-label={`${label} box`}
-  >
-    <header className="box-header"><button className="box-drag-handle" type="button" onPointerDown={begin('drag')} title="Drag to move box" aria-label="Drag to move box"><GripHorizontal size={15} /></button><span className="box-title"><Icon size={14} /><span>{label}</span></span>{selected && <BoxToolbar zoom={box.zoom * 100} onExpand={onExpand} onZoomIn={onZoomIn} onZoomOut={onZoomOut} onCopy={onCopy} onDelete={onDelete} />}</header>
-    <div className="box-content">{children}</div>
-    {selected && <button className="box-resize-handle" type="button" onPointerDown={begin('resize')} title="Drag to resize box" aria-label="Drag to resize box" />}
-  </article>
+  const handleDelete = (e) => {
+    e.stopPropagation()
+    deleteBox(box.id)
+  }
+
+  const frameStyle = expanded
+    ? {}
+    : {
+        position: 'absolute',
+        left: box.x,
+        top: box.y,
+        width: box.width,
+        height: box.height,
+        zIndex: selected ? 30 : 1,
+      }
+
+  return (
+    <div
+      className={
+        expanded
+          ? 'fixed inset-0 z-[90] flex items-center justify-center bg-gray-900/50 p-4 animate-fade-in backdrop-blur-[2px] sm:p-8'
+          : 'group'
+      }
+      style={expanded ? {} : frameStyle}
+      onMouseDown={expanded ? undefined : select}
+    >
+      <div
+        className={
+          expanded
+            ? 'flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-pop animate-scale-in dark:border-gray-700 dark:bg-gray-800'
+            : `flex h-full w-full flex-col overflow-hidden rounded-xl border bg-white shadow-soft transition-shadow dark:bg-gray-800 ${
+                selected
+                  ? 'border-accent-400 ring-2 ring-accent-100 dark:ring-accent-900/40'
+                  : 'border-gray-200 hover:border-gray-300 dark:border-gray-600 dark:hover:border-gray-500'
+              }`
+        }
+        onMouseDown={expanded ? select : undefined}
+      >
+        {(selected || expanded) && (
+          <BoxToolbar
+            label={box.label}
+            zoom={box.zoom}
+            expanded={expanded}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onExpandToggle={handleExpandToggle}
+            onCopy={handleCopy}
+            onDelete={handleDelete}
+            dragHandleProps={expanded ? {} : { onPointerDown: onDragPointerDown }}
+            extraControls={extraControls}
+          />
+        )}
+        {(selected || expanded) && secondaryToolbar}
+        <div
+          className={`relative min-h-0 flex-1 overflow-auto ${contentClassName}`}
+          style={
+            expanded
+              ? {}
+              : {
+                  borderTopLeftRadius: selected ? 0 : undefined,
+                }
+          }
+        >
+          <div
+            style={{
+              transform: expanded ? 'none' : `scale(${box.zoom / 100})`,
+              transformOrigin: 'top left',
+              width: expanded ? '100%' : `${10000 / box.zoom}%`,
+              minHeight: '100%',
+            }}
+          >
+            {children}
+          </div>
+        </div>
+
+        {!expanded && selected && (
+          <div
+            onPointerDown={onResizePointerDown}
+            className="absolute bottom-0 right-0 z-40 h-4 w-4 cursor-nwse-resize rounded-tl border-l border-t border-gray-300 bg-white/80 dark:border-gray-500 dark:bg-gray-700/80"
+            style={{
+              backgroundImage:
+                'repeating-linear-gradient(135deg, currentColor 0 1px, transparent 1px 3px)',
+              color: '#9ca3af',
+            }}
+            aria-hidden="true"
+            title="Resize"
+          />
+        )}
+      </div>
+    </div>
+  )
 }

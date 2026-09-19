@@ -1,5 +1,9 @@
 node_modules
 dist
-.vite
-.npm-cache
+dist-ssr
+*.local
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+*.log
 npm-debug.log*

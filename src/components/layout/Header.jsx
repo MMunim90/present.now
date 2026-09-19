@@ -1,15 +1,99 @@
-import { useState } from 'react'
-import { Braces, ChevronDown, FileDown, FilePlus2, FileText, FolderOpen, Image, Moon, Plus, Save, Sun, TerminalSquare, Video } from 'lucide-react'
+import React, { useState } from 'react'
+import { FilePlus, Undo2, Redo2, Trash2, Sun, Moon, Download, FileStack, Pencil } from 'lucide-react'
 import IconButton from '../ui/IconButton'
+import AddBoxMenu from './AddBoxMenu'
+import HelpMenu from './HelpMenu'
+import SaveStatus from './SaveStatus'
+import { useDocumentStore } from '../../store/DocumentContext'
 
-const addOptions = [{ type: 'text', label: 'Text', icon: FileText }, { type: 'image', label: 'Image', icon: Image }, { type: 'video', label: 'Video', icon: Video }, { type: 'code', label: 'Code', icon: Braces }, { type: 'output', label: 'Output', icon: TerminalSquare }]
+export default function Header({
+  theme,
+  onToggleTheme,
+  onOpenExport,
+  onOpenDocuments,
+  onRequestDeleteAll,
+  onRequestNewDocument,
+}) {
+  const { doc, addBox, undo, redo, canUndo, canRedo, saveStatus, renameCurrentDocument } = useDocumentStore()
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState(doc.name)
 
-export default function Header({ theme, saveStatus, exportStatus, onThemeToggle, onAddBox, onNewDocument, onOpenDocuments, onExport }) {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [exportOpen, setExportOpen] = useState(false)
-  return <header className="app-header">
-    <div className="header-brand" aria-label="present.now home"><span className="brand-mark" aria-hidden="true"><span /></span><span className="brand-name">present<span>.now</span></span></div>
-    <div className="header-actions"><button className="button button-quiet" type="button" onClick={onNewDocument}><FilePlus2 size={16} /><span>New</span></button><button className="button button-quiet documents-button" type="button" onClick={onOpenDocuments}><FolderOpen size={16} /><span>Documents</span></button><div className="add-box-menu"><button className="button button-primary" type="button" aria-expanded={menuOpen} aria-haspopup="menu" onClick={() => setMenuOpen((open) => !open)}><Plus size={16} /><span>Add box</span><ChevronDown size={14} /></button>{menuOpen && <div className="add-menu-popover" role="menu">{addOptions.map(({ type, label, icon: Icon }) => <button type="button" role="menuitem" key={type} onClick={() => { onAddBox(type); setMenuOpen(false) }}><Icon size={16} /><span>{label}</span></button>)}</div>}</div></div>
-    <div className="header-tools"><span className={`save-status ${(saveStatus === 'Unable to save locally' || exportStatus.startsWith('Unable')) ? 'save-error' : ''}`} title="Changes are stored only in your browser" role="status" aria-live="polite"><Save size={14} /><span>{exportStatus || saveStatus}</span></span><IconButton label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'} onClick={onThemeToggle}>{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</IconButton><div className="add-box-menu export-menu"><button className="button button-quiet export-button" type="button" aria-label="Export document" aria-haspopup="menu" aria-expanded={exportOpen} onClick={() => setExportOpen((open) => !open)}><FileDown size={16} /><span>Export</span><ChevronDown size={15} /></button>{exportOpen && <div className="add-menu-popover export-popover" role="menu" aria-label="Export document"><button type="button" role="menuitem" onClick={() => { onExport('pdf'); setExportOpen(false) }}>Export as PDF</button><button type="button" role="menuitem" onClick={() => { onExport('pptx'); setExportOpen(false) }}>Export as PPTX</button><button type="button" role="menuitem" onClick={() => { onExport('docx'); setExportOpen(false) }}>Export as DOCX</button></div>}</div></div>
-  </header>
+  const startEdit = () => {
+    setNameDraft(doc.name)
+    setEditingName(true)
+  }
+
+  const commitName = () => {
+    renameCurrentDocument(nameDraft.trim() || 'Untitled')
+    setEditingName(false)
+  }
+
+  return (
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-gray-200 bg-white px-3 dark:border-gray-800 dark:bg-gray-900 sm:px-4">
+      <div className="flex items-center gap-2 pr-1">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-500 text-sm font-bold text-white">p.</div>
+        <span className="hidden text-[15px] font-semibold tracking-tight text-gray-900 dark:text-gray-100 sm:inline">
+          present<span className="text-accent-500">.now</span>
+        </span>
+      </div>
+
+      <div className="h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" />
+
+      <div className="flex min-w-0 items-center gap-1 px-1">
+        {editingName ? (
+          <input
+            autoFocus
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onBlur={commitName}
+            onKeyDown={(e) => e.key === 'Enter' && commitName()}
+            aria-label="Document name"
+            className="h-8 w-40 min-w-0 rounded-md border border-accent-300 bg-white px-2 text-sm outline-none dark:bg-gray-800 dark:text-gray-100"
+          />
+        ) : (
+          <button
+            onClick={startEdit}
+            className="group flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+            title="Rename document"
+          >
+            <span className="max-w-[10rem] truncate sm:max-w-[16rem]">{doc.name}</span>
+            <Pencil size={12} className="shrink-0 text-gray-300 group-hover:text-gray-400" />
+          </button>
+        )}
+      </div>
+
+      <div className="hidden items-center gap-0.5 md:flex">
+        <IconButton icon={Undo2} label="Undo" onClick={undo} disabled={!canUndo} />
+        <IconButton icon={Redo2} label="Redo" onClick={redo} disabled={!canRedo} />
+      </div>
+
+      <div className="mx-1 hidden h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700 md:block" />
+
+      <AddBoxMenu onAdd={addBox} />
+
+      <div className="ml-auto flex items-center gap-1">
+        <div className="hidden lg:block">
+          <SaveStatus status={saveStatus} />
+        </div>
+
+        <div className="mx-1 hidden h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700 sm:block" />
+
+        <IconButton icon={FilePlus} label="New document" onClick={onRequestNewDocument} />
+        <IconButton icon={FileStack} label="Open document" onClick={onOpenDocuments} />
+        <IconButton icon={Trash2} label="Delete all boxes" onClick={onRequestDeleteAll} disabled={doc.boxes.length === 0} />
+
+        <div className="mx-1 h-6 w-px shrink-0 bg-gray-200 dark:bg-gray-700" />
+
+        <button
+          onClick={onOpenExport}
+          className="flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+        >
+          <Download size={15} /> <span className="hidden sm:inline">Export</span>
+        </button>
+
+        <IconButton icon={theme === 'dark' ? Sun : Moon} label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} onClick={onToggleTheme} />
+        <HelpMenu />
+      </div>
+    </header>
+  )
 }

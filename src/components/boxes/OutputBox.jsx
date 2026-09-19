@@ -1,7 +1,49 @@
+import React, { useState } from 'react'
+import { Eraser, Clipboard, Check, Terminal } from 'lucide-react'
 import BaseBox from './BaseBox'
-import { Copy, Eraser } from 'lucide-react'
+import IconButton from '../ui/IconButton'
+import { useDocumentStore } from '../../store/DocumentContext'
 
-export default function OutputBox({ box, ...props }) {
-  const copy = async () => { try { await navigator.clipboard.writeText(box.content) } catch { /* Clipboard permission is optional. */ } }
-  return <BaseBox box={box} {...props}><div className="output-editor"><div className="output-actions"><span>Output</span><button type="button" onClick={copy} title="Copy output" aria-label="Copy output"><Copy size={13} /></button><button type="button" onClick={() => props.onChange('')} title="Clear output" aria-label="Clear output"><Eraser size={13} /></button></div><textarea className="box-textarea output-content" value={box.content} onChange={(event) => props.onChange(event.target.value)} onPointerDown={(event) => event.stopPropagation()} placeholder="Output will appear here…" aria-label="Output box content" /></div></BaseBox>
+export default function OutputBox({ box, pageRef }) {
+  const { updateBox } = useDocumentStore()
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(box.content)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch (err) {
+      console.warn('Clipboard copy failed', err)
+    }
+  }
+
+  const handleClear = () => updateBox(box.id, { content: '' })
+
+  return (
+    <BaseBox
+      box={box}
+      pageRef={pageRef}
+      extraControls={
+        <>
+          <IconButton icon={Eraser} label="Clear output" size="sm" onClick={handleClear} />
+          <IconButton icon={copied ? Check : Clipboard} label={copied ? 'Copied!' : 'Copy output'} size="sm" onClick={handleCopy} />
+        </>
+      }
+    >
+      <div className="flex h-full min-h-[100px] w-full flex-col bg-[#fafafa] dark:bg-gray-900/60">
+        <div className="flex items-center gap-1.5 border-b border-gray-200 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:border-gray-700 dark:text-gray-500">
+          <Terminal size={12} /> Output
+        </div>
+        <textarea
+          value={box.content}
+          onChange={(e) => updateBox(box.id, { content: e.target.value }, { record: false })}
+          onBlur={(e) => updateBox(box.id, { content: e.target.value })}
+          placeholder="Output will appear here…"
+          aria-label="Output content"
+          className="min-h-0 flex-1 resize-none border-none bg-transparent p-3 font-mono text-[13px] leading-relaxed text-gray-700 outline-none placeholder:text-gray-400 dark:text-gray-300"
+        />
+      </div>
+    </BaseBox>
+  )
 }

@@ -1,16 +1,35 @@
-const SETTINGS_KEY = 'present-now:settings'
+const SETTINGS_KEY = 'presentnow:settings'
 
-function readSettings() {
-  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') } catch { return {} }
+const DEFAULT_SETTINGS = {
+  theme: 'light',
 }
 
-function writeSettings(settings) {
-  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); return true } catch { return false }
+export function getSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY)
+    if (!raw) return { ...DEFAULT_SETTINGS }
+    const parsed = JSON.parse(raw)
+    return { ...DEFAULT_SETTINGS, ...parsed }
+  } catch (err) {
+    console.warn('Corrupted settings, resetting to defaults.', err)
+    return { ...DEFAULT_SETTINGS }
+  }
 }
 
-export const settingsStorage = {
-  getTheme: () => readSettings().theme,
-  setTheme: (theme) => writeSettings({ ...readSettings(), theme }),
-  getActiveDocumentId: () => readSettings().activeDocumentId,
-  setActiveDocumentId: (activeDocumentId) => writeSettings({ ...readSettings(), activeDocumentId }),
+export function saveSettings(settings) {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+  } catch (err) {
+    console.error('Failed to persist settings', err)
+  }
+}
+
+export function getTheme() {
+  return getSettings().theme
+}
+
+export function setTheme(theme) {
+  const settings = getSettings()
+  settings.theme = theme
+  saveSettings(settings)
 }
