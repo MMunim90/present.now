@@ -2,7 +2,7 @@ import PptxGenJS from 'pptxgenjs'
 import { mediaToDataUrl } from '../../utils/exportHelpers'
 import { sanitizeFilename } from './exportPdf'
 import { resolveVideoUrl } from '../../utils/video'
-import { PAGE_MIN_HEIGHT } from '../../utils/factories'
+import { getContentBounds } from '../../utils/canvasSize'
 
 const SLIDE_W = 13.333 // inches, 16:9
 const SLIDE_H = 7.5
@@ -15,7 +15,7 @@ export async function exportToPptx(doc, pageWidth) {
   const slide = pptx.addSlide()
   slide.background = { color: 'FFFFFF' }
 
-  const pageHeightPx = Math.max(PAGE_MIN_HEIGHT, ...doc.boxes.map((b) => b.y + b.height), 1)
+  const pageHeightPx = Math.max(getContentBounds(doc.boxes).height, 1)
   const scaleX = SLIDE_W / pageWidth
   const scaleY = SLIDE_H / pageHeightPx
 

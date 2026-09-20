@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useMemo } from 'react'
 import { LayoutTemplate } from 'lucide-react'
 import { useDocumentStore } from '../../store/DocumentContext'
 import TextBox from '../boxes/TextBox'
@@ -6,7 +6,8 @@ import ImageBox from '../boxes/ImageBox'
 import VideoBox from '../boxes/VideoBox'
 import CodeBox from '../boxes/CodeBox'
 import OutputBox from '../boxes/OutputBox'
-import { PAGE_MIN_HEIGHT } from '../../utils/factories'
+import { useElementSize } from '../../hooks/useElementSize'
+import { getContentBounds } from '../../utils/canvasSize'
 
 const BOX_COMPONENTS = {
   text: TextBox,
@@ -16,9 +17,23 @@ const BOX_COMPONENTS = {
   output: OutputBox,
 }
 
-export default function Canvas({ pageWidth }) {
+export default function Canvas() {
   const { doc, setSelectedId, setExpandedId } = useDocumentStore()
-  const pageRef = useRef(null)
+
+  // `workspaceRef` measures the *available* scrollable workspace (viewport-driven).
+  // `pageRef` is the actual document/canvas surface, sized from both the
+  // workspace and the content's own footprint — never forced to a fixed width.
+  const [workspaceRef, workspaceSize] = useElementSize({ width: 1120, height: 780 })
+  const pageRef = React.useRef(null)
+
+  const contentBounds = useMemo(() => getContentBounds(doc.boxes), [doc.boxes])
+
+  // Content-aware canvas: only ever grows beyond the workspace when the
+  // boxes actually require the extra space; otherwise it fills the
+  // available viewport so small/empty pages never carry unnecessary
+  // horizontal scrolling on small devices.
+  const pageWidth = Math.max(workspaceSize.width, contentBounds.width)
+  const pageHeight = Math.max(workspaceSize.height, contentBounds.height)
 
   const handleBackgroundClick = () => {
     setSelectedId(null)
@@ -26,13 +41,13 @@ export default function Canvas({ pageWidth }) {
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-gray-100 px-4 py-8 dark:bg-gray-950 sm:px-8">
+    <div ref={workspaceRef} className="flex-1 overflow-auto bg-gray-100 px-4 py-8 dark:bg-gray-950 sm:px-8">
       <div
         id="present-now-page"
         ref={pageRef}
         onMouseDown={handleBackgroundClick}
         className="relative mx-auto rounded-2xl border border-gray-200 bg-white shadow-soft transition-colors dark:border-gray-800 dark:bg-gray-900"
-        style={{ width: pageWidth, minHeight: PAGE_MIN_HEIGHT, maxWidth: '100%' }}
+        style={{ width: pageWidth, height: pageHeight }}
       >
         {doc.boxes.length === 0 && (
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center text-gray-400 dark:text-gray-600">

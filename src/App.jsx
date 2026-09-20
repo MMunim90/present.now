@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { DocumentProvider, useDocumentStore } from './store/DocumentContext'
 import { useTheme } from './hooks/useTheme'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
@@ -9,6 +9,7 @@ import ConfirmDialog from './components/dialogs/ConfirmDialog'
 import ExportDialog from './components/dialogs/ExportDialog'
 import DocumentDialog from './components/dialogs/DocumentDialog'
 import * as documentStorage from './services/storage/documentStorage'
+import { getContentBounds } from './utils/canvasSize'
 
 function AppShell() {
   const { theme, toggleTheme } = useTheme()
@@ -25,8 +26,16 @@ function AppShell() {
     redo,
     newDocument,
     openDocument,
-    pageWidth,
   } = useDocumentStore()
+
+  // Export scaling is based on the content's own bounding box (what the
+  // boxes actually occupy), not the potentially much larger visual canvas
+  // that fills a wide viewport — this keeps exported layouts tight around
+  // the real content regardless of how the on-screen canvas has grown.
+  const exportPageWidth = useMemo(() => {
+    const bounds = getContentBounds(doc.boxes)
+    return bounds.width || 1120
+  }, [doc.boxes])
 
   const [exportOpen, setExportOpen] = useState(false)
   const [documentsOpen, setDocumentsOpen] = useState(false)
@@ -64,11 +73,11 @@ function AppShell() {
         onRequestNewDocument={() => setConfirmNewDoc(true)}
       />
 
-      <Canvas pageWidth={pageWidth} />
+      <Canvas />
 
       <Footer />
 
-      <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} doc={doc} pageWidth={pageWidth} />
+      <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} doc={doc} pageWidth={exportPageWidth} />
 
       <DocumentDialog
         open={documentsOpen}

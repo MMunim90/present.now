@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useUndoRedo } from '../hooks/useUndoRedo'
 import { useDebouncedEffect } from '../hooks/useDebouncedEffect'
-import { createBox, createEmptyDocument, cloneBoxForCopy, PAGE_WIDTH } from '../utils/factories'
+import { createBox, createEmptyDocument, cloneBoxForCopy } from '../utils/factories'
 import { nextLabel } from '../utils/ids'
 import * as documentStorage from '../services/storage/documentStorage'
 import { deleteMedia } from '../services/storage/mediaStorage'
@@ -211,7 +211,6 @@ export function DocumentProvider({ children }) {
     renameCurrentDocument,
     newDocument,
     openDocument,
-    pageWidth: PAGE_WIDTH,
   }
 
   return <DocumentContext.Provider value={value}>{children}</DocumentContext.Provider>
