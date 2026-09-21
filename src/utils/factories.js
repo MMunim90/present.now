@@ -13,6 +13,7 @@ export function createEmptyDocument(name = 'Untitled') {
     updatedAt: now,
     counters: {},
     boxes: [],
+    connections: [],
   }
 }
 
@@ -40,6 +41,7 @@ export function createBox(type, overrides = {}) {
     width: base.width,
     height: base.height,
     zoom: 100,
+    locked: false,
     createdAt: new Date().toISOString(),
   }
 

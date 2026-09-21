@@ -1,68 +1,61 @@
-// src/store/DocumentContext.jsx
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useUndoRedo } from "../hooks/useUndoRedo";
-import { useDebouncedEffect } from "../hooks/useDebouncedEffect";
-import {
-  createBox,
-  createEmptyDocument,
-  cloneBoxForCopy,
-} from "../utils/factories";
-import { nextLabel } from "../utils/ids";
-import * as documentStorage from "../services/storage/documentStorage";
-import { deleteMedia } from "../services/storage/mediaStorage";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useUndoRedo } from '../hooks/useUndoRedo'
+import { useDebouncedEffect } from '../hooks/useDebouncedEffect'
+import { createBox, createEmptyDocument, cloneBoxForCopy } from '../utils/factories'
+import { nextLabel } from '../utils/ids'
+import { createConnection } from '../utils/connections'
+import * as documentStorage from '../services/storage/documentStorage'
+import { deleteMedia } from '../services/storage/mediaStorage'
 
-const DocumentContext = createContext(null);
+const DocumentContext = createContext(null)
+
+// Older saved documents (created before the connections feature existed)
+// won't have a `connections` array — default it so the rest of the app can
+// always assume `doc.connections` is an array.
+function normalizeDocument(doc) {
+  return { ...doc, connections: Array.isArray(doc.connections) ? doc.connections : [] }
+}
 
 function loadInitialDocument() {
   try {
-    const activeId = documentStorage.getActiveDocumentId();
+    const activeId = documentStorage.getActiveDocumentId()
     if (activeId) {
-      const doc = documentStorage.getDocument(activeId);
-      if (doc && Array.isArray(doc.boxes)) return doc;
+      const doc = documentStorage.getDocument(activeId)
+      if (doc && Array.isArray(doc.boxes)) return normalizeDocument(doc)
     }
-    const index = documentStorage.getDocumentIndex();
+    const index = documentStorage.getDocumentIndex()
     if (index.length > 0) {
-      const doc = documentStorage.getDocument(index[0].id);
-      if (doc && Array.isArray(doc.boxes)) return doc;
+      const doc = documentStorage.getDocument(index[0].id)
+      if (doc && Array.isArray(doc.boxes)) return normalizeDocument(doc)
     }
   } catch (err) {
-    console.warn("Failed to load saved document, starting fresh.", err);
+    console.warn('Failed to load saved document, starting fresh.', err)
   }
-  const fresh = createEmptyDocument("Untitled");
-  return fresh;
+  const fresh = createEmptyDocument('Untitled')
+  return fresh
 }
 
 export function DocumentProvider({ children }) {
-  const initialDoc = useMemo(() => loadInitialDocument(), [])
-  const {
-    state: doc,
-    set: setDoc,
-    commit,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    reset,
-  } = useUndoRedo(initialDoc);
+  const initialDoc = useMemo(loadInitialDocument, [])
+  const { state: doc, set: setDoc, commit, undo, redo, canUndo, canRedo, reset } = useUndoRedo(initialDoc)
 
-  const [selectedId, setSelectedId] = useState(null);
-  const [expandedId, setExpandedId] = useState(null);
-  const [saveStatus, setSaveStatus] = useState("saved"); // 'saved' | 'saving' | 'error'
-  const dragSnapshotRef = useRef(null);
-  const saveTokenRef = useRef(0);
+  const [selectedId, setSelectedId] = useState(null)
+  const [expandedId, setExpandedId] = useState(null)
+  const [selectedConnectionId, setSelectedConnectionId] = useState(null)
+  // Ephemeral (not persisted) preview state for an in-progress connection
+  // drag: { sourceBoxId, sourcePoint, x, y } where x/y are the live pointer
+  // position in canvas coordinates. Read by ConnectionLayer to draw the
+  // temporary preview line, and by ConnectionPoints on every box so all
+  // boxes can reveal their points as potential drop targets while dragging.
+  const [pendingConnection, setPendingConnection] = useState(null)
+  const [saveStatus, setSaveStatus] = useState('saved') // 'saved' | 'saving' | 'error'
+  const dragSnapshotRef = useRef(null)
+  const saveTokenRef = useRef(0)
 
   // Persist active document id whenever the document identity changes.
   useEffect(() => {
-    documentStorage.setActiveDocumentId(doc.id);
-  }, [doc.id]);
+    documentStorage.setActiveDocumentId(doc.id)
+  }, [doc.id])
 
   // Debounced autosave to localStorage.
   // The save itself is wrapped as a microtask (Promise) rather than run
@@ -76,177 +69,210 @@ export function DocumentProvider({ children }) {
   // persistence call has actually finished.
   useDebouncedEffect(
     () => {
-      const token = ++saveTokenRef.current;
-      setSaveStatus("saving");
+      const token = ++saveTokenRef.current
+      setSaveStatus('saving')
       Promise.resolve()
         .then(() => {
-          documentStorage.saveDocument({
-            ...doc,
-            updatedAt: new Date().toISOString(),
-          });
+          documentStorage.saveDocument({ ...doc, updatedAt: new Date().toISOString() })
         })
         .then(() => {
-          if (saveTokenRef.current === token) setSaveStatus("saved");
+          if (saveTokenRef.current === token) setSaveStatus('saved')
         })
         .catch((err) => {
-          console.error("Failed to save document locally", err);
-          if (saveTokenRef.current === token) setSaveStatus("error");
-        });
+          console.error('Failed to save document locally', err)
+          if (saveTokenRef.current === token) setSaveStatus('error')
+        })
     },
     [doc],
-    500,
-  );
+    500
+  )
 
   const updateDoc = useCallback(
     (updater, options) => {
       setDoc((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater;
-        return { ...next, updatedAt: new Date().toISOString() };
-      }, options);
+        const next = typeof updater === 'function' ? updater(prev) : updater
+        return { ...next, updatedAt: new Date().toISOString() }
+      }, options)
     },
-    [setDoc],
-  );
+    [setDoc]
+  )
 
   // ---------- Box operations ----------
 
   const addBox = useCallback(
     (type) => {
-      let createdId = null;
+      let createdId = null
       updateDoc((prev) => {
-        const { label, counters } = nextLabel(prev.counters || {}, type);
-        const box = createBox(type, { label });
-        createdId = box.id;
-        return { ...prev, counters, boxes: [...prev.boxes, box] };
-      });
-      setSelectedId(createdId);
-      return createdId;
+        const { label, counters } = nextLabel(prev.counters || {}, type)
+        const box = createBox(type, { label })
+        createdId = box.id
+        return { ...prev, counters, boxes: [...prev.boxes, box] }
+      })
+      setSelectedId(createdId)
+      setSelectedConnectionId(null)
+      return createdId
     },
-    [updateDoc],
-  );
+    [updateDoc]
+  )
 
   const updateBox = useCallback(
     (id, patch, options) => {
       updateDoc(
         (prev) => ({
           ...prev,
-          boxes: prev.boxes.map((b) =>
-            b.id === id
-              ? { ...b, ...(typeof patch === "function" ? patch(b) : patch) }
-              : b,
-          ),
+          boxes: prev.boxes.map((b) => (b.id === id ? { ...b, ...(typeof patch === 'function' ? patch(b) : patch) } : b)),
         }),
-        options,
-      );
+        options
+      )
     },
-    [updateDoc],
-  );
+    [updateDoc]
+  )
 
   const beginTransientEdit = useCallback(() => {
-    dragSnapshotRef.current = doc;
-  }, [doc]);
+    dragSnapshotRef.current = doc
+  }, [doc])
 
   const endTransientEdit = useCallback(() => {
     if (dragSnapshotRef.current) {
-      commit(dragSnapshotRef.current);
-      dragSnapshotRef.current = null;
+      commit(dragSnapshotRef.current)
+      dragSnapshotRef.current = null
     }
-  }, [commit]);
+  }, [commit])
 
   const deleteBox = useCallback(
     async (id) => {
-      const box = doc.boxes.find((b) => b.id === id);
+      const box = doc.boxes.find((b) => b.id === id)
+      // Deleting a box must also remove every connection attached to it —
+      // no orphaned arrows left pointing at a box that no longer exists.
+      const orphanedConnectionIds = new Set(
+        (doc.connections || []).filter((c) => c.sourceBoxId === id || c.targetBoxId === id).map((c) => c.id)
+      )
       updateDoc((prev) => ({
         ...prev,
         boxes: prev.boxes.filter((b) => b.id !== id),
-      }));
-      setSelectedId((cur) => (cur === id ? null : cur));
-      setExpandedId((cur) => (cur === id ? null : cur));
+        connections: (prev.connections || []).filter((c) => c.sourceBoxId !== id && c.targetBoxId !== id),
+      }))
+      setSelectedId((cur) => (cur === id ? null : cur))
+      setExpandedId((cur) => (cur === id ? null : cur))
+      setSelectedConnectionId((cur) => (cur && orphanedConnectionIds.has(cur) ? null : cur))
       // Best-effort cleanup of associated media blobs.
       try {
-        if (box?.type === "image" && box.content?.mediaId)
-          await deleteMedia(box.content.mediaId);
-        if (box?.type === "video" && box.content?.mediaId)
-          await deleteMedia(box.content.mediaId);
+        if (box?.type === 'image' && box.content?.mediaId) await deleteMedia(box.content.mediaId)
+        if (box?.type === 'video' && box.content?.mediaId) await deleteMedia(box.content.mediaId)
       } catch (err) {
-        console.warn("Media cleanup failed", err);
+        console.warn('Media cleanup failed', err)
       }
     },
-    [doc.boxes, updateDoc],
-  );
+    [doc.boxes, doc.connections, updateDoc]
+  )
 
   const copyBox = useCallback(
     (id) => {
-      let newId = null;
+      let newId = null
       updateDoc((prev) => {
-        const original = prev.boxes.find((b) => b.id === id);
-        if (!original) return prev;
-        const { label, counters } = nextLabel(
-          prev.counters || {},
-          original.type,
-        );
-        const copy = { ...cloneBoxForCopy(original), label };
-        newId = copy.id;
-        return { ...prev, counters, boxes: [...prev.boxes, copy] };
-      });
-      if (newId) setSelectedId(newId);
-      return newId;
+        const original = prev.boxes.find((b) => b.id === id)
+        if (!original) return prev
+        const { label, counters } = nextLabel(prev.counters || {}, original.type)
+        const copy = { ...cloneBoxForCopy(original), label }
+        newId = copy.id
+        // Intentionally does NOT duplicate connections — a copied box starts
+        // out independent, as an ordinary new box would.
+        return { ...prev, counters, boxes: [...prev.boxes, copy] }
+      })
+      if (newId) {
+        setSelectedId(newId)
+        setSelectedConnectionId(null)
+      }
+      return newId
     },
-    [updateDoc],
-  );
+    [updateDoc]
+  )
 
   const deleteAllBoxes = useCallback(() => {
-    updateDoc((prev) => ({ ...prev, boxes: [] }));
-    setSelectedId(null);
-    setExpandedId(null);
-  }, [updateDoc]);
+    updateDoc((prev) => ({ ...prev, boxes: [], connections: [] }))
+    setSelectedId(null)
+    setExpandedId(null)
+    setSelectedConnectionId(null)
+  }, [updateDoc])
 
   const bringToFront = useCallback(
     (id) => {
-      updateDoc(
-        (prev) => {
-          const box = prev.boxes.find((b) => b.id === id);
-          if (!box) return prev;
-          const others = prev.boxes.filter((b) => b.id !== id);
-          return { ...prev, boxes: [...others, box] };
-        },
-        { record: false },
-      );
+      updateDoc((prev) => {
+        const box = prev.boxes.find((b) => b.id === id)
+        if (!box) return prev
+        const others = prev.boxes.filter((b) => b.id !== id)
+        return { ...prev, boxes: [...others, box] }
+      }, { record: false })
     },
-    [updateDoc],
-  );
+    [updateDoc]
+  )
 
   const renameCurrentDocument = useCallback(
     (name) => {
-      updateDoc((prev) => ({ ...prev, name }));
+      updateDoc((prev) => ({ ...prev, name }))
     },
-    [updateDoc],
-  );
+    [updateDoc]
+  )
+
+  // ---------- Connection operations ----------
+
+  const addConnection = useCallback(
+    (sourceBoxId, sourcePoint, targetBoxId, targetPoint) => {
+      // No self-connections, and both ends must actually be specified.
+      if (!sourceBoxId || !targetBoxId || sourceBoxId === targetBoxId) return null
+      let newId = null
+      updateDoc((prev) => {
+        const connection = createConnection(sourceBoxId, sourcePoint, targetBoxId, targetPoint)
+        newId = connection.id
+        return { ...prev, connections: [...(prev.connections || []), connection] }
+      })
+      return newId
+    },
+    [updateDoc]
+  )
+
+  const deleteConnection = useCallback(
+    (id) => {
+      updateDoc((prev) => ({ ...prev, connections: (prev.connections || []).filter((c) => c.id !== id) }))
+      setSelectedConnectionId((cur) => (cur === id ? null : cur))
+    },
+    [updateDoc]
+  )
+
+  const selectConnection = useCallback((id) => {
+    setSelectedConnectionId(id)
+    setSelectedId(null)
+  }, [])
 
   // ---------- Document (file) operations ----------
 
   const newDocument = useCallback(() => {
-    const fresh = createEmptyDocument("Untitled");
-    documentStorage.saveDocument(fresh);
-    saveTokenRef.current++; // invalidate any in-flight save from the previous document
-    setSaveStatus("saved");
-    reset(fresh);
-    setSelectedId(null);
-    setExpandedId(null);
-  }, [reset]);
+    const fresh = createEmptyDocument('Untitled')
+    documentStorage.saveDocument(fresh)
+    saveTokenRef.current++ // invalidate any in-flight save from the previous document
+    setSaveStatus('saved')
+    reset(fresh)
+    setSelectedId(null)
+    setExpandedId(null)
+    setSelectedConnectionId(null)
+    setPendingConnection(null)
+  }, [reset])
 
   const openDocument = useCallback(
     (id) => {
-      const loaded = documentStorage.getDocument(id);
-      if (!loaded) return false;
-      saveTokenRef.current++; // invalidate any in-flight save from the previous document
-      setSaveStatus("saved");
-      reset(loaded);
-      setSelectedId(null);
-      setExpandedId(null);
-      return true;
+      const loaded = documentStorage.getDocument(id)
+      if (!loaded) return false
+      saveTokenRef.current++ // invalidate any in-flight save from the previous document
+      setSaveStatus('saved')
+      reset(normalizeDocument(loaded))
+      setSelectedId(null)
+      setExpandedId(null)
+      setSelectedConnectionId(null)
+      setPendingConnection(null)
+      return true
     },
-    [reset],
-  );
+    [reset]
+  )
 
   const value = {
     doc,
@@ -254,6 +280,13 @@ export function DocumentProvider({ children }) {
     setSelectedId,
     expandedId,
     setExpandedId,
+    selectedConnectionId,
+    setSelectedConnectionId,
+    selectConnection,
+    pendingConnection,
+    setPendingConnection,
+    addConnection,
+    deleteConnection,
     saveStatus,
     canUndo,
     canRedo,
@@ -270,18 +303,13 @@ export function DocumentProvider({ children }) {
     renameCurrentDocument,
     newDocument,
     openDocument,
-  };
+  }
 
-  return (
-    <DocumentContext.Provider value={value}>
-      {children}
-    </DocumentContext.Provider>
-  );
+  return <DocumentContext.Provider value={value}>{children}</DocumentContext.Provider>
 }
 
 export function useDocumentStore() {
-  const ctx = useContext(DocumentContext);
-  if (!ctx)
-    throw new Error("useDocumentStore must be used within DocumentProvider");
-  return ctx;
+  const ctx = useContext(DocumentContext)
+  if (!ctx) throw new Error('useDocumentStore must be used within DocumentProvider')
+  return ctx
 }

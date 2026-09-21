@@ -6,6 +6,7 @@ import ImageBox from '../boxes/ImageBox'
 import VideoBox from '../boxes/VideoBox'
 import CodeBox from '../boxes/CodeBox'
 import OutputBox from '../boxes/OutputBox'
+import ConnectionLayer from './ConnectionLayer'
 import { useElementSize } from '../../hooks/useElementSize'
 import { getContentBounds } from '../../utils/canvasSize'
 
@@ -18,7 +19,7 @@ const BOX_COMPONENTS = {
 }
 
 export default function Canvas() {
-  const { doc, setSelectedId, setExpandedId } = useDocumentStore()
+  const { doc, setSelectedId, setExpandedId, setSelectedConnectionId } = useDocumentStore()
 
   // `workspaceRef` measures the *available* scrollable workspace (viewport-driven).
   // `pageRef` is the actual document/canvas surface, sized from both the
@@ -38,6 +39,7 @@ export default function Canvas() {
   const handleBackgroundClick = () => {
     setSelectedId(null)
     setExpandedId(null)
+    setSelectedConnectionId(null)
   }
 
   return (
@@ -60,6 +62,8 @@ export default function Canvas() {
             </div>
           </div>
         )}
+
+        <ConnectionLayer width={pageWidth} height={pageHeight} />
 
         {doc.boxes.map((box) => {
           const Component = BOX_COMPONENTS[box.type]

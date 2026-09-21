@@ -1,5 +1,5 @@
 import React from 'react'
-import { Maximize2, Minimize2, Copy, Trash2, ZoomIn, ZoomOut, GripVertical } from 'lucide-react'
+import { Maximize2, Minimize2, Copy, Trash2, ZoomIn, ZoomOut, GripVertical, Lock, Unlock } from 'lucide-react'
 import IconButton from '../ui/IconButton'
 import { ZOOM_LEVELS } from '../../utils/formatting'
 
@@ -7,6 +7,8 @@ export default function BoxToolbar({
   label,
   zoom,
   expanded,
+  locked,
+  onToggleLock,
   onZoomIn,
   onZoomOut,
   onExpandToggle,
@@ -20,7 +22,10 @@ export default function BoxToolbar({
       className="flex items-center gap-1 rounded-t-xl border border-b-0 border-gray-200 bg-gray-50/95 px-1.5 py-1 text-gray-500 backdrop-blur-sm dark:border-gray-600 dark:bg-gray-800/95"
       {...dragHandleProps}
     >
-      <span className="flex cursor-grab items-center gap-1 pr-1 text-gray-400 active:cursor-grabbing" title="Drag to move">
+      <span
+        className={`flex items-center gap-1 pr-1 text-gray-400 ${locked ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}
+        title={locked ? 'Locked — unlock to move' : 'Drag to move'}
+      >
         <GripVertical size={14} />
         <span className="select-none text-[11px] font-medium text-gray-500 dark:text-gray-400">{label}</span>
       </span>
@@ -36,6 +41,13 @@ export default function BoxToolbar({
           <IconButton icon={ZoomIn} label="Zoom in" size="sm" onClick={onZoomIn} disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]} />
         </div>
 
+        <IconButton
+          icon={locked ? Lock : Unlock}
+          label={locked ? 'Unlock box (allow move & resize)' : 'Lock box (prevent move & resize)'}
+          size="sm"
+          active={locked}
+          onClick={onToggleLock}
+        />
         <IconButton icon={expanded ? Minimize2 : Maximize2} label={expanded ? 'Minimize' : 'Expand'} size="sm" onClick={onExpandToggle} />
         <IconButton icon={Copy} label="Duplicate box" size="sm" onClick={onCopy} />
         <IconButton

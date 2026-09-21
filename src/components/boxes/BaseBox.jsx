@@ -1,6 +1,7 @@
 import React, { useCallback, useRef } from 'react'
 import { useDocumentStore } from '../../store/DocumentContext'
 import BoxToolbar from './BoxToolbar'
+import ConnectionPoints from './ConnectionPoints'
 import { clamp, nextZoom } from '../../utils/formatting'
 
 const MIN_WIDTH = 180
@@ -12,6 +13,7 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
     setSelectedId,
     expandedId,
     setExpandedId,
+    setSelectedConnectionId,
     updateBox,
     deleteBox,
     copyBox,
@@ -29,15 +31,16 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
     (e) => {
       e.stopPropagation()
       setSelectedId(box.id)
+      setSelectedConnectionId(null)
       bringToFront(box.id)
     },
-    [box.id, setSelectedId, bringToFront]
+    [box.id, setSelectedId, setSelectedConnectionId, bringToFront]
   )
 
   // ---------- Drag ----------
   const onDragPointerDown = useCallback(
     (e) => {
-      if (expanded) return
+      if (expanded || box.locked) return
       e.preventDefault()
       select(e)
       beginTransientEdit()
@@ -51,7 +54,7 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
       window.addEventListener('pointerup', onDragUp)
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [box.x, box.y, expanded]
+    [box.x, box.y, box.locked, expanded]
   )
 
   const onDragMove = useCallback(
@@ -86,6 +89,7 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
   // ---------- Resize ----------
   const onResizePointerDown = useCallback(
     (e) => {
+      if (box.locked) return
       e.preventDefault()
       e.stopPropagation()
       select(e)
@@ -100,7 +104,7 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
       window.addEventListener('pointerup', onResizeUp)
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [box.width, box.height]
+    [box.width, box.height, box.locked]
   )
 
   const onResizeMove = useCallback(
@@ -133,6 +137,10 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
   const handleZoomIn = () => updateBox(box.id, { zoom: nextZoom(box.zoom, 1) })
   const handleZoomOut = () => updateBox(box.id, { zoom: nextZoom(box.zoom, -1) })
   const handleExpandToggle = () => setExpandedId(expanded ? null : box.id)
+  const handleToggleLock = (e) => {
+    e.stopPropagation()
+    updateBox(box.id, { locked: !box.locked })
+  }
   const handleCopy = (e) => {
     e.stopPropagation()
     copyBox(box.id)
@@ -171,7 +179,7 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
                 selected
                   ? 'border-accent-400 ring-2 ring-accent-100 dark:ring-accent-900/40'
                   : 'border-gray-200 hover:border-gray-300 dark:border-gray-600 dark:hover:border-gray-500'
-              }`
+              } ${box.locked ? 'border-dashed' : ''}`
         }
         onMouseDown={expanded ? select : undefined}
       >
@@ -180,12 +188,14 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
             label={box.label}
             zoom={box.zoom}
             expanded={expanded}
+            locked={!!box.locked}
+            onToggleLock={handleToggleLock}
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onExpandToggle={handleExpandToggle}
             onCopy={handleCopy}
             onDelete={handleDelete}
-            dragHandleProps={expanded ? {} : { onPointerDown: onDragPointerDown }}
+            dragHandleProps={expanded || box.locked ? {} : { onPointerDown: onDragPointerDown }}
             extraControls={extraControls}
           />
         )}
@@ -212,7 +222,7 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
           </div>
         </div>
 
-        {!expanded && selected && (
+        {!expanded && selected && !box.locked && (
           <div
             onPointerDown={onResizePointerDown}
             className="absolute bottom-0 right-0 z-40 h-4 w-4 cursor-nwse-resize rounded-tl border-l border-t border-gray-300 bg-white/80 dark:border-gray-500 dark:bg-gray-700/80"
@@ -226,6 +236,8 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
           />
         )}
       </div>
+
+      {!expanded && <ConnectionPoints box={box} pageRef={pageRef} forceVisible={selected} />}
     </div>
   )
 }

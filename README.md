@@ -11,6 +11,8 @@ A frontend-only, single-page visual content & presentation workspace. Drop in te
   - **Video** — paste a YouTube/Vimeo/direct URL, or upload a local video file.
   - **Code** — VS Code–style editor with syntax highlighting (Prism), line numbers, and a language selector (JS, TS, Python, C, C++, Java, HTML, CSS, SQL, JSON, Bash).
   - **Output** — a visually distinct, manually editable panel for pasting/typing results.
+- **Box-to-box connections** — drag from any of a box's four border-mounted connection points (top/right/bottom/left) to another box to draw a directional arrow between them. Arrows stay attached through moves/resizes, are cleaned up automatically when a connected box is deleted, and are selectable/deletable on their own (click an arrow, press Delete).
+- **Per-box lock** — toggle a box's position/size lock from its toolbar (Lock/Unlock icon). A locked box can't be dragged or resized (its resize handle is hidden and its drag handle is inert), but everything else — content editing, zoom, expand, copy, delete, connections — keeps working exactly as before.
 - **Per-box controls** — zoom in/out (50%–200%), expand to a focused modal view, duplicate, delete, drag-to-move, drag-to-resize.
 - **Undo/redo** — `Ctrl+Z` / `Ctrl+Shift+Z` (or `Ctrl+Y`), including for adds, deletes, moves, resizes, edits, and copies.
 - **Keyboard shortcuts** — `Ctrl+S` save, `Ctrl+D` duplicate, `Delete` remove selected, `Esc` deselect/exit expand — all suppressed while typing in a text field so native editing is never broken.
@@ -72,9 +74,10 @@ npm run lint
 src/
   components/
     layout/     Header, Footer, AddBoxMenu, HelpMenu, SaveStatus
-    canvas/     Canvas (the page surface)
+    canvas/     Canvas (the page surface), ConnectionLayer (SVG arrow overlay)
     boxes/      BaseBox (shared drag/resize/zoom/expand/toolbar chrome) +
-                TextBox, ImageBox, VideoBox, CodeBox, OutputBox, BoxToolbar
+                TextBox, ImageBox, VideoBox, CodeBox, OutputBox, BoxToolbar,
+                ConnectionPoints (the four border-mounted connection dots)
     editor/     TextEditor (formatting toolbar), CodeEditor (Prism-powered)
     dialogs/    ConfirmDialog, ExportDialog, DocumentDialog
     ui/         Tooltip, IconButton, Dropdown
@@ -90,7 +93,8 @@ src/
     export/     exportPdf.js, exportPptx.js, exportDocx.js
   utils/
     ids.js, formatting.js, factories.js (data model + box factories),
-    video.js, exportHelpers.js
+    video.js, exportHelpers.js, canvasSize.js (content-aware canvas sizing),
+    connections.js (connection-point coordinate math + connection factory)
 ```
 
 ### Why `BaseBox`?

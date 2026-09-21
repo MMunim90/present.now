@@ -19,6 +19,9 @@ function AppShell() {
     setSelectedId,
     expandedId,
     setExpandedId,
+    selectedConnectionId,
+    setSelectedConnectionId,
+    deleteConnection,
     deleteBox,
     copyBox,
     deleteAllBoxes,
@@ -52,14 +55,18 @@ function AppShell() {
         console.error(err)
       }
     },
-    onDeleteSelected: () => selectedId && deleteBox(selectedId),
+    onDeleteSelected: () => {
+      if (selectedId) deleteBox(selectedId)
+      else if (selectedConnectionId) deleteConnection(selectedConnectionId)
+    },
     onCopySelected: () => selectedId && copyBox(selectedId),
     onDuplicateSelected: () => selectedId && copyBox(selectedId),
     onEscape: () => {
       if (expandedId) setExpandedId(null)
       else if (selectedId) setSelectedId(null)
+      else if (selectedConnectionId) setSelectedConnectionId(null)
     },
-    hasSelection: !!selectedId,
+    hasSelection: !!selectedId || !!selectedConnectionId,
   })
 
   return (
