@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { Link2, Upload, Film } from 'lucide-react'
+import { Link2, Upload, Film, Repeat } from 'lucide-react'
 import BaseBox from './BaseBox'
 import IconButton from '../ui/IconButton'
 import { useDocumentStore } from '../../store/DocumentContext'
@@ -51,13 +51,25 @@ export default function VideoBox({ box, pageRef }) {
     }
   }
 
+  const handleToggleLoop = () => updateBox(box.id, { loop: !box.loop })
+
   const resolved = box.content?.source === 'url' && box.content?.url ? resolveVideoUrl(box.content.url) : null
 
   return (
     <BaseBox
       box={box}
       pageRef={pageRef}
-      extraControls={<IconButton icon={Upload} label="Upload local video" size="sm" onClick={() => fileInputRef.current?.click()} />}
+      extraControls={
+        <>
+          <IconButton
+            icon={Repeat}
+            label={box.loop ? 'Loop: on (click to disable)' : 'Loop: off (click to enable)'}
+            active={!!box.loop}
+            onClick={handleToggleLoop}
+          />
+          <IconButton icon={Upload} label="Upload local video" size="sm" onClick={() => fileInputRef.current?.click()} />
+        </>
+      }
       secondaryToolbar={
         <div className="flex items-center gap-1.5 border-b border-gray-200 bg-white px-2 py-1.5 dark:border-gray-700 dark:bg-gray-800">
           <Link2 size={14} className="shrink-0 text-gray-400" />
@@ -88,7 +100,7 @@ export default function VideoBox({ box, pageRef }) {
       />
       <div className="flex h-full min-h-[160px] w-full items-center justify-center bg-black">
         {box.content?.source === 'local' && localUrl.url ? (
-          <video src={localUrl.url} controls className="h-full w-full" />
+          <video src={localUrl.url} controls loop={!!box.loop} className="h-full w-full" />
         ) : resolved?.kind === 'embed' ? (
           <iframe
             title={box.label}
@@ -98,7 +110,7 @@ export default function VideoBox({ box, pageRef }) {
             allowFullScreen
           />
         ) : resolved?.kind === 'file' ? (
-          <video src={resolved.src} controls className="h-full w-full" />
+          <video src={resolved.src} controls loop={!!box.loop} className="h-full w-full" />
         ) : (
           <div className="flex flex-col items-center gap-2 p-6 text-center text-gray-400">
             <Film size={28} />

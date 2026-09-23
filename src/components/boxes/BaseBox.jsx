@@ -215,7 +215,7 @@ export default function BaseBox({ box, pageWidth, pageRef, extraControls, second
               transform: expanded ? 'none' : `scale(${box.zoom / 100})`,
               transformOrigin: 'top left',
               width: expanded ? '100%' : `${10000 / box.zoom}%`,
-              minHeight: '100%',
+              height: expanded ? '100%' : `${10000 / box.zoom}%`,
             }}
           >
             {children}

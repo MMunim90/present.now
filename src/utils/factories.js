@@ -49,7 +49,7 @@ export function createBox(type, overrides = {}) {
     case 'text':
       return {
         ...common,
-        content: 'Double-click to edit this text…',
+        // content: 'Start typing.....',
         style: {
           fontSize: 16,
           fontFamily: 'Inter',
@@ -57,7 +57,7 @@ export function createBox(type, overrides = {}) {
           italic: false,
           underline: false,
           textAlign: 'left',
-          color: '#111827',
+          color: '#808080',
           background: 'transparent',
         },
         ...overrides,
@@ -74,6 +74,7 @@ export function createBox(type, overrides = {}) {
         ...common,
         content: { source: 'url', url: '', mediaId: null },
         style: {},
+        loop: false,
         ...overrides,
       }
     case 'code':

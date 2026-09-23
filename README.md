@@ -8,7 +8,7 @@ A frontend-only, single-page visual content & presentation workspace. Drop in te
 - **Five box types**
   - **Text** — rich per-box formatting (font family/size, bold/italic/underline, alignment, text & fill color), expandable editor.
   - **Image** — local upload (stored in IndexedDB, not on any server), replace/remove, resizable.
-  - **Video** — paste a YouTube/Vimeo/direct URL, or upload a local video file.
+  - **Video** — paste a YouTube/Vimeo/direct URL, or upload a local video file. A per-box Loop toggle controls whether the video restarts automatically when it ends (native HTML `loop` attribute; independent per box, defaults off).
   - **Code** — VS Code–style editor with syntax highlighting (Prism), line numbers, and a language selector (JS, TS, Python, C, C++, Java, HTML, CSS, SQL, JSON, Bash).
   - **Output** — a visually distinct, manually editable panel for pasting/typing results.
 - **Box-to-box connections** — drag from any of a box's four border-mounted connection points (top/right/bottom/left) to another box to draw a directional arrow between them. Arrows stay attached through moves/resizes, are cleaned up automatically when a connected box is deleted, and are selectable/deletable on their own (click an arrow, press Delete).

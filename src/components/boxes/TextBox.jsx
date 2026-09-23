@@ -28,7 +28,7 @@ export default function TextBox({ box, pageRef }) {
         value={box.content}
         onChange={(e) => updateBox(box.id, { content: e.target.value }, { record: false })}
         onBlur={(e) => updateBox(box.id, { content: e.target.value })}
-        placeholder="Type something…"
+        placeholder="Start typing....."
         aria-label="Text box content"
         className="h-full min-h-[100px] w-full resize-none border-none bg-transparent p-4 leading-relaxed outline-none placeholder:text-gray-400"
         style={{ ...textStyle, minHeight: expanded ? '60vh' : undefined }}
