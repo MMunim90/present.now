@@ -7,7 +7,7 @@ A frontend-only, single-page visual content & presentation workspace. Drop in te
 - **Single-page visual canvas** — add, drag, resize, and layer content boxes on a document-like surface.
 - **Five box types**
   - **Text** — rich per-box formatting (font family/size, bold/italic/underline, alignment, text & fill color), expandable editor.
-  - **Image** — local upload (stored in IndexedDB, not on any server), replace/remove, resizable.
+  - **Image** — local upload (stored in IndexedDB, not on any server), replace/remove, resizable, and rotatable in 90° steps (rotates only the image content, independent per box).
   - **Video** — paste a YouTube/Vimeo/direct URL, or upload a local video file. A per-box Loop toggle controls whether the video restarts automatically when it ends (native HTML `loop` attribute; independent per box, defaults off).
   - **Code** — VS Code–style editor with syntax highlighting (Prism), line numbers, and a language selector (JS, TS, Python, C, C++, Java, HTML, CSS, SQL, JSON, Bash).
   - **Output** — a visually distinct, manually editable panel for pasting/typing results.

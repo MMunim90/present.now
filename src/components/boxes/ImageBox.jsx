@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { ImagePlus, RefreshCw, XCircle, ImageOff } from 'lucide-react'
+import { ImagePlus, RefreshCw, XCircle, ImageOff, RotateCw } from 'lucide-react'
 import BaseBox from './BaseBox'
 import IconButton from '../ui/IconButton'
 import { useDocumentStore } from '../../store/DocumentContext'
@@ -50,6 +50,10 @@ export default function ImageBox({ box, pageRef }) {
     }
   }
 
+  const handleRotate = () => {
+    updateBox(box.id, { rotation: ((box.rotation || 0) + 90) % 360 })
+  }
+
   return (
     <BaseBox
       box={box}
@@ -57,6 +61,7 @@ export default function ImageBox({ box, pageRef }) {
       extraControls={
         <>
           <IconButton icon={ImagePlus} label={url ? 'Replace image' : 'Upload image'} size="sm" onClick={() => fileInputRef.current?.click()} />
+          {url && <IconButton icon={RotateCw} label={`Rotate image (${box.rotation || 0}°)`} size="sm" onClick={handleRotate} />}
           {url && <IconButton icon={XCircle} label="Remove image" size="sm" onClick={handleRemove} />}
         </>
       }
@@ -70,12 +75,14 @@ export default function ImageBox({ box, pageRef }) {
         onChange={(e) => handleFile(e.target.files?.[0])}
       />
       {url ? (
-        <img
-          src={url}
-          alt={box.content?.name || 'Uploaded content'}
-          className="h-full w-full object-cover"
-          style={{ objectFit: box.style?.objectFit || 'cover' }}
-        />
+        <div className="flex h-full w-full items-center justify-center overflow-hidden">
+          <img
+            src={url}
+            alt={box.content?.name || 'Uploaded content'}
+            className="h-full w-full object-cover transition-transform"
+            style={{ objectFit: box.style?.objectFit || 'cover', transform: `rotate(${box.rotation || 0}deg)` }}
+          />
+        </div>
       ) : (
         <button
           onClick={() => fileInputRef.current?.click()}

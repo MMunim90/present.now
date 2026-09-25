@@ -67,6 +67,7 @@ export function createBox(type, overrides = {}) {
         ...common,
         content: { mediaId: null, name: null },
         style: { objectFit: 'cover' },
+        rotation: 0,
         ...overrides,
       }
     case 'video':
