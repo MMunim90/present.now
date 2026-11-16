@@ -1,5 +1,5 @@
 import React from 'react'
-import { Plus, Type, ImageIcon, Video, Code2, Terminal } from 'lucide-react'
+import { Plus, Type, ImageIcon, Video, Code2, Terminal, BarChart3 } from 'lucide-react'
 import Dropdown from '../ui/Dropdown'
 
 const OPTIONS = [
@@ -8,6 +8,7 @@ const OPTIONS = [
   { type: 'video', label: 'Video', description: 'URL or local file', icon: Video },
   { type: 'code', label: 'Code', description: 'Syntax-highlighted editor', icon: Code2 },
   { type: 'output', label: 'Output', description: 'Editable result panel', icon: Terminal },
+  { type: 'graph', label: 'Graph', description: 'Charts & function plots', icon: BarChart3 },
 ]
 
 export default function AddBoxMenu({ onAdd }) {

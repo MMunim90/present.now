@@ -1,4 +1,5 @@
 import { uuid } from './ids'
+import { createDefaultGraphData } from './graph/graphDefaults'
 
 export const PAGE_WIDTH = 1120
 export const PAGE_MIN_HEIGHT = 780
@@ -23,6 +24,7 @@ const DEFAULTS_BY_TYPE = {
   video: { width: 420, height: 260 },
   code: { width: 460, height: 300 },
   output: { width: 420, height: 220 },
+  graph: { width: 560, height: 400 },
 }
 
 let cascadeCounter = 0
@@ -49,7 +51,7 @@ export function createBox(type, overrides = {}) {
     case 'text':
       return {
         ...common,
-        // content: 'Start typing.....',
+        content: 'Double-click to edit this text…',
         style: {
           fontSize: 16,
           fontFamily: 'Inter',
@@ -57,7 +59,7 @@ export function createBox(type, overrides = {}) {
           italic: false,
           underline: false,
           textAlign: 'left',
-          color: '#808080',
+          color: '#111827',
           background: 'transparent',
         },
         ...overrides,
@@ -83,6 +85,14 @@ export function createBox(type, overrides = {}) {
         ...common,
         content: '// Write or paste code here\n',
         language: 'javascript',
+        style: {},
+        ...overrides,
+      }
+    case 'graph':
+      return {
+        ...common,
+        content: null,
+        graphData: createDefaultGraphData('bar'),
         style: {},
         ...overrides,
       }
